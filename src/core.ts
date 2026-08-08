@@ -1,6 +1,6 @@
 import { EnvError, EnvMissingError } from './errors'
-import type { CleanOptions, SpecsOutput, Spec, ValidatorSpec } from './types'
 import { defaultReporter } from './reporter'
+import type { CleanOptions, Spec, SpecsOutput, ValidatorSpec } from './types'
 
 /**
  * Validate a single env var, given a spec object
@@ -11,16 +11,16 @@ import { defaultReporter } from './reporter'
 function validateVar<T>({
   spec,
   name,
-  rawValue,
+  normalizedValue,
 }: {
   name: string
-  rawValue: string | T
+  normalizedValue: string | T
   spec: ValidatorSpec<T>
 }) {
   if (typeof spec._parse !== 'function') {
     throw new EnvError(`Invalid spec for "${name}"`)
   }
-  const value = spec._parse(rawValue as string)
+  const value = spec._parse(normalizedValue as string)
 
   if (spec.choices) {
     if (!Array.isArray(spec.choices)) {
@@ -40,8 +40,17 @@ export function formatSpecDescription<T>(spec: Spec<T>) {
   return `${spec.desc}${egText}${docsText}`
 }
 
-const readRawEnvValue = <T>(env: unknown, k: keyof T | 'NODE_ENV'): string | T[keyof T] => {
-  return (env as any)[k]
+const readNormalizedEnvValue = <T>(
+  env: unknown,
+  k: keyof T | 'NODE_ENV',
+): string | undefined | T[keyof T] => {
+  const result = (env as any)[k]
+
+  if (typeof result == 'string' && !result.trim()) {
+    return undefined
+  }
+
+  return result
 }
 
 /**
@@ -56,25 +65,27 @@ export function getSanitizedEnv<S>(
   const castedSpecs = specs as unknown as Record<keyof S, ValidatorSpec<unknown>>
   const errors = {} as Record<keyof S, Error>
   const varKeys = Object.keys(castedSpecs) as Array<keyof S>
-  const rawNodeEnv = readRawEnvValue(environment, 'NODE_ENV')
+  const normalizedNodeEnv = readNormalizedEnvValue(environment, 'NODE_ENV')
 
   for (const k of varKeys) {
     const spec = castedSpecs[k]
-    const rawValue = readRawEnvValue(environment, k)
+    const normalizedValue = readNormalizedEnvValue(environment, k)
 
     try {
       // If no value was given and default/devDefault/testDefault were provided, return the
       // appropriate default value without passing it through validation
-      if (rawValue === undefined) {
+      if (normalizedValue === undefined) {
         // Use testDefault only when NODE_ENV is 'test'. Takes priority over devDefault and default.
-        if (rawNodeEnv === 'test' && Object.hasOwn(spec, 'testDefault')) {
+        if (normalizedNodeEnv === 'test' && Object.hasOwn(spec, 'testDefault')) {
           cleanedEnv[k] = spec.testDefault
           continue
         }
 
         // Use devDefault values only if NODE_ENV was explicitly set, and isn't 'production'
         const usingDevDefault =
-          rawNodeEnv && rawNodeEnv !== 'production' && Object.hasOwn(spec, 'devDefault')
+          normalizedNodeEnv &&
+          normalizedNodeEnv !== 'production' &&
+          Object.hasOwn(spec, 'devDefault')
 
         if (usingDevDefault) {
           cleanedEnv[k] = spec.devDefault
@@ -91,7 +102,7 @@ export function getSanitizedEnv<S>(
         throw new EnvMissingError(formatSpecDescription(spec))
       }
 
-      cleanedEnv[k] = validateVar({ name: k as string, spec, rawValue })
+      cleanedEnv[k] = validateVar({ name: k as string, spec, normalizedValue })
     } catch (err) {
       if (options?.reporter === null) throw err
       if (err instanceof Error) errors[k] = err

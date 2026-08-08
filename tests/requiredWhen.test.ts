@@ -2,9 +2,13 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { bool, cleanEnv, defaultReporter, EnvMissingError, num, EnvError } from '../src'
 import { formatSpecDescription } from '../src/core'
 
-vi.mock('../src/reporter')
-const mockedDefaultReporter: vi.Mock = <vi.Mock<typeof defaultReporter>>defaultReporter;
-mockedDefaultReporter.mockImplementation(() => { })
+const mockedDefaultReporter = <vi.Mock<typeof defaultReporter>>vi.fn()
+mockedDefaultReporter.mockImplementation(() => {})
+
+vi.mock('../src/reporter', (): typeof import('../src/reporter') => ({
+  defaultReporter: mockedDefaultReporter,
+  envalidErrorFormatter: vi.fn(),
+}))
 
 describe('requiredWhen', () => {
   beforeEach(() => {
@@ -13,7 +17,7 @@ describe('requiredWhen', () => {
   test("isn't required", () => {
     cleanEnv(
       {
-        autoExtractId: "true",
+        autoExtractId: 'true',
       },
       {
         autoExtractId: bool(),
@@ -29,14 +33,54 @@ describe('requiredWhen', () => {
         autoExtractId: true,
         id: undefined,
       },
-      errors: {}
+      errors: {},
+    })
+  })
+
+  test("isn't required but empty string provided", () => {
+    cleanEnv(
+      {
+        id: '',
+      },
+      {
+        id: num({
+          default: undefined,
+          requiredWhen: () => false,
+        }),
+      },
+    )
+    expect(mockedDefaultReporter).toHaveBeenCalledTimes(1)
+    expect(mockedDefaultReporter).toHaveBeenCalledWith({
+      env: {
+        id: undefined,
+      },
+      errors: {},
+    })
+
+    cleanEnv(
+      {
+        autoExtractId: '',
+      },
+      {
+        autoExtractId: bool({
+          default: undefined,
+          requiredWhen: () => false,
+        }),
+      },
+    )
+    expect(mockedDefaultReporter).toHaveBeenCalledTimes(2)
+    expect(mockedDefaultReporter).toHaveBeenCalledWith({
+      env: {
+        autoExtractId: undefined,
+      },
+      errors: {},
     })
   })
 
   test('required but not provided', () => {
     cleanEnv(
       {
-        autoExtractId: "false",
+        autoExtractId: 'false',
       },
       {
         autoExtractId: bool(),
@@ -68,8 +112,8 @@ describe('requiredWhen', () => {
   test('required and provided', () => {
     cleanEnv(
       {
-        autoExtractId: "false",
-        id: "123"
+        autoExtractId: 'false',
+        id: '123',
       },
       {
         autoExtractId: bool(),
@@ -92,8 +136,8 @@ describe('requiredWhen', () => {
   test('required but failed to parse', () => {
     cleanEnv(
       {
-        autoExtractId: "false",
-        id: "abc"
+        autoExtractId: 'false',
+        id: 'abc',
       },
       {
         autoExtractId: bool(),
@@ -110,7 +154,7 @@ describe('requiredWhen', () => {
         id: undefined,
       },
       errors: {
-        id: new EnvError(`Invalid number input: "abc"`)
+        id: new EnvError(`Invalid number input: "abc"`),
       },
     })
   })
