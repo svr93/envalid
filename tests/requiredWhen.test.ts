@@ -2,13 +2,9 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { bool, cleanEnv, defaultReporter, EnvMissingError, num, EnvError } from '../src'
 import { formatSpecDescription } from '../src/core'
 
-const mockedDefaultReporter = <vi.Mock<typeof defaultReporter>>vi.fn()
+vi.mock('../src/reporter')
+const mockedDefaultReporter: vi.Mock = <vi.Mock<typeof defaultReporter>>defaultReporter
 mockedDefaultReporter.mockImplementation(() => {})
-
-vi.mock('../src/reporter', (): typeof import('../src/reporter') => ({
-  defaultReporter: mockedDefaultReporter,
-  envalidErrorFormatter: vi.fn(),
-}))
 
 describe('requiredWhen', () => {
   beforeEach(() => {
