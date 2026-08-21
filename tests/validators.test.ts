@@ -149,14 +149,14 @@ test('str()', () => {
     return cleanEnv({ FOO: ' ' }, { FOO: str() }, makeSilent)
   }).toThrow()
 
-  expect(() => cleanEnv({ FOO: 42 }, { FOO: str() }, makeSilent)).toThrow()
-
   const defaultWithWhitespace = cleanEnv(
     { FOO: ' ' },
     { FOO: str({ default: 'asdf' }) },
     makeSilent,
   )
   expect(defaultWithWhitespace).toEqual({ FOO: 'asdf' })
+
+  expect(() => cleanEnv({ FOO: 42 }, { FOO: str() }, makeSilent)).toThrow()
 })
 
 test('custom types', () => {
