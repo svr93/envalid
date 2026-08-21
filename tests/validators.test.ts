@@ -171,8 +171,8 @@ test('custom types', () => {
 
   const defaultWithWhitespace = cleanEnv(
     { FOO: ' ' },
-    { FOO: str({ default: "asdf" }) },
+    { FOO: str({ default: 'asdf' }) },
     makeSilent,
   )
-  expect(defaultWithWhitespace).toEqual({ FOO: "asdf" })
+  expect(defaultWithWhitespace).toEqual({ FOO: 'asdf' })
 })

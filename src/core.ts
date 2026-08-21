@@ -65,7 +65,7 @@ export function getSanitizedEnv<S>(
   const castedSpecs = specs as unknown as Record<keyof S, ValidatorSpec<unknown>>
   const errors = {} as Record<keyof S, Error>
   const varKeys = Object.keys(castedSpecs) as Array<keyof S>
-  const normalizedNodeEnv = readRawEnvValue(environment, 'NODE_ENV')
+  const rawNodeEnv = readRawEnvValue(environment, 'NODE_ENV')
 
   for (const k of varKeys) {
     const spec = castedSpecs[k]
@@ -76,16 +76,14 @@ export function getSanitizedEnv<S>(
       // appropriate default value without passing it through validation
       if (rawValue === undefined) {
         // Use testDefault only when NODE_ENV is 'test'. Takes priority over devDefault and default.
-        if (normalizedNodeEnv === 'test' && Object.hasOwn(spec, 'testDefault')) {
+        if (rawNodeEnv === 'test' && Object.hasOwn(spec, 'testDefault')) {
           cleanedEnv[k] = spec.testDefault
           continue
         }
 
         // Use devDefault values only if NODE_ENV was explicitly set, and isn't 'production'
         const usingDevDefault =
-          normalizedNodeEnv &&
-          normalizedNodeEnv !== 'production' &&
-          Object.hasOwn(spec, 'devDefault')
+          rawNodeEnv && rawNodeEnv !== 'production' && Object.hasOwn(spec, 'devDefault')
 
         if (usingDevDefault) {
           cleanedEnv[k] = spec.devDefault
