@@ -11,16 +11,16 @@ import type { CleanOptions, Spec, SpecsOutput, ValidatorSpec } from './types'
 function validateVar<T>({
   spec,
   name,
-  normalizedValue,
+  rawValue,
 }: {
   name: string
-  normalizedValue: string | T
+  rawValue: string | T
   spec: ValidatorSpec<T>
 }) {
   if (typeof spec._parse !== 'function') {
     throw new EnvError(`Invalid spec for "${name}"`)
   }
-  const value = spec._parse(normalizedValue as string)
+  const value = spec._parse(rawValue as string)
 
   if (spec.choices) {
     if (!Array.isArray(spec.choices)) {
@@ -40,7 +40,7 @@ export function formatSpecDescription<T>(spec: Spec<T>) {
   return `${spec.desc}${egText}${docsText}`
 }
 
-const readNormalizedEnvValue = <T>(
+const readRawEnvValue = <T>(
   env: unknown,
   k: keyof T | 'NODE_ENV',
 ): string | undefined | T[keyof T] => {
@@ -65,16 +65,16 @@ export function getSanitizedEnv<S>(
   const castedSpecs = specs as unknown as Record<keyof S, ValidatorSpec<unknown>>
   const errors = {} as Record<keyof S, Error>
   const varKeys = Object.keys(castedSpecs) as Array<keyof S>
-  const normalizedNodeEnv = readNormalizedEnvValue(environment, 'NODE_ENV')
+  const normalizedNodeEnv = readRawEnvValue(environment, 'NODE_ENV')
 
   for (const k of varKeys) {
     const spec = castedSpecs[k]
-    const normalizedValue = readNormalizedEnvValue(environment, k)
+    const rawValue = readRawEnvValue(environment, k)
 
     try {
       // If no value was given and default/devDefault/testDefault were provided, return the
       // appropriate default value without passing it through validation
-      if (normalizedValue === undefined) {
+      if (rawValue === undefined) {
         // Use testDefault only when NODE_ENV is 'test'. Takes priority over devDefault and default.
         if (normalizedNodeEnv === 'test' && Object.hasOwn(spec, 'testDefault')) {
           cleanedEnv[k] = spec.testDefault
@@ -102,7 +102,7 @@ export function getSanitizedEnv<S>(
         throw new EnvMissingError(formatSpecDescription(spec))
       }
 
-      cleanedEnv[k] = validateVar({ name: k as string, spec, normalizedValue })
+      cleanedEnv[k] = validateVar({ name: k as string, spec, rawValue })
     } catch (err) {
       if (options?.reporter === null) throw err
       if (err instanceof Error) errors[k] = err
