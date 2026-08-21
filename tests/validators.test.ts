@@ -150,6 +150,13 @@ test('str()', () => {
   }).toThrow()
 
   expect(() => cleanEnv({ FOO: 42 }, { FOO: str() }, makeSilent)).toThrow()
+
+  const defaultWithWhitespace = cleanEnv(
+    { FOO: ' ' },
+    { FOO: str({ default: 'asdf' }) },
+    makeSilent,
+  )
+  expect(defaultWithWhitespace).toEqual({ FOO: 'asdf' })
 })
 
 test('custom types', () => {
@@ -168,11 +175,4 @@ test('custom types', () => {
   // Default values work with custom validators as well
   const withDefault = cleanEnv({}, { FOO: hex10({ default: 'abcabcabc0' }) })
   expect(withDefault).toEqual({ FOO: 'abcabcabc0' })
-
-  const defaultWithWhitespace = cleanEnv(
-    { FOO: ' ' },
-    { FOO: str({ default: 'asdf' }) },
-    makeSilent,
-  )
-  expect(defaultWithWhitespace).toEqual({ FOO: 'asdf' })
 })
